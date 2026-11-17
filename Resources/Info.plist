@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>
+    <string>BudsBar</string>
+    <key>CFBundleDisplayName</key>
+    <string>BudsBar</string>
+    <key>CFBundleIdentifier</key>
+    <string>io.github.budsbar.BudsBar</string>
+    <key>CFBundleExecutable</key>
+    <string>BudsBar</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>__VERSION__</string>
+    <key>CFBundleVersion</key>
+    <string>__VERSION__</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>13.0</string>
+    <key>LSUIElement</key>
+    <true/>
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>BudsBar verbindet sich per Bluetooth mit deinen Galaxy Buds, um Akkustand, Geräuschsteuerung und Einstellungen anzuzeigen und zu ändern.</string>
+    <key>NSHumanReadableCopyright</key>
+    <string>GPL-3.0 · Nicht mit Samsung verbunden.</string>
+</dict>
+</plist>
