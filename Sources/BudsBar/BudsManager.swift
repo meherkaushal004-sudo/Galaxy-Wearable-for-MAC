@@ -4,6 +4,7 @@
 
 import Foundation
 import IOBluetooth
+import os
 
 /// Findet gekoppelte Galaxy Buds, öffnet den RFCOMM-Kanal und tauscht Nachrichten aus.
 /// Alle IOBluetooth-Callbacks laufen auf dem Main-Thread.
@@ -33,6 +34,8 @@ final class BudsManager: NSObject, ObservableObject, IOBluetoothRFCOMMChannelDel
     @Published private(set) var status = BudsStatus()
     @Published private(set) var isFinding = false
 
+    let log = Logger(subsystem: "io.github.budsbar.BudsBar", category: "bluetooth")
+    private var attempt = 0
     private var device: IOBluetoothDevice?
     private var channel: IOBluetoothRFCOMMChannel?
     private var parser = MessageParser()
@@ -67,28 +70,45 @@ final class BudsManager: NSObject, ObservableObject, IOBluetoothRFCOMMChannelDel
 
         device = candidate
         deviceName = candidate.name
-        guard candidate.isConnected() else {
-            state = .disconnected
-            return
+        log.info("Gerät: \(candidate.name ?? "?", privacy: .public) \(candidate.addressString ?? "?", privacy: .public) isConnected=\(candidate.isConnected(), privacy: .public) (von \(buds.count, privacy: .public) Buds)")
+
+        // isConnected() meldet bei Audio-Verbindungen, die macOS selbst aufgebaut hat, oft „false“.
+        // Deshalb trotzdem versuchen – das Öffnen des Kanals baut die Verbindung bei Bedarf auf.
+        state = .connecting
+        attempt += 1
+        let thisAttempt = attempt
+        DispatchQueue.main.asyncAfter(deadline: .now() + 20) {
+            if self.attempt == thisAttempt, self.state == .connecting {
+                self.log.error("Zeitüberschreitung beim Verbinden")
+                self.channel?.close()
+                self.channel = nil
+                self.state = .failed("Zeitüberschreitung – sind die Buds aus dem Case?")
+            }
         }
 
-        state = .connecting
         if let record = candidate.getServiceRecord(for: serviceUUID) {
+            log.info("Dienst im Cache gefunden")
             openChannel(record: record)
         } else {
-            // Dienst noch nicht im Cache: SDP-Abfrage starten, Ergebnis kommt in sdpQueryComplete.
+            log.info("Dienst nicht im Cache – starte SDP-Abfrage")
+            // Ergebnis kommt in sdpQueryComplete.
             let result = candidate.performSDPQuery(self, uuids: [serviceUUID])
             if result != kIOReturnSuccess {
+                log.error("SDP-Abfrage fehlgeschlagen: \(result, privacy: .public)")
                 state = .failed("SDP-Abfrage fehlgeschlagen (\(result))")
             }
         }
     }
 
     @objc func sdpQueryComplete(_ device: IOBluetoothDevice!, status: IOReturn) {
+        log.info("SDP fertig, Status \(status, privacy: .public), \(device.services?.count ?? 0, privacy: .public) Dienste")
         guard device == self.device, channel == nil else { return }
         if let record = device.getServiceRecord(for: serviceUUID) {
             openChannel(record: record)
         } else {
+            for case let record as IOBluetoothSDPServiceRecord in device.services ?? [] {
+                log.info("  Dienst: \(record.getServiceName() ?? "?", privacy: .public)")
+            }
             state = .failed("Steuerdienst nicht gefunden – wird dieses Modell unterstützt?")
         }
     }
@@ -96,14 +116,17 @@ final class BudsManager: NSObject, ObservableObject, IOBluetoothRFCOMMChannelDel
     private func openChannel(record: IOBluetoothSDPServiceRecord) {
         var channelID: BluetoothRFCOMMChannelID = 0
         guard record.getRFCOMMChannelID(&channelID) == kIOReturnSuccess, let device else {
+            log.error("Kein RFCOMM-Kanal im Dienst")
             state = .failed("Kein RFCOMM-Kanal")
             return
         }
+        log.info("Öffne RFCOMM-Kanal \(channelID, privacy: .public)")
         var newChannel: IOBluetoothRFCOMMChannel?
         let result = device.openRFCOMMChannelAsync(&newChannel, withChannelID: channelID, delegate: self)
         if result == kIOReturnSuccess {
             channel = newChannel
         } else {
+            log.error("openRFCOMMChannelAsync: \(result, privacy: .public)")
             state = .failed("Kanal konnte nicht geöffnet werden (\(result))")
         }
     }
@@ -135,6 +158,7 @@ final class BudsManager: NSObject, ObservableObject, IOBluetoothRFCOMMChannelDel
     // MARK: IOBluetoothRFCOMMChannelDelegate
 
     func rfcommChannelOpenComplete(_ rfcommChannel: IOBluetoothRFCOMMChannel!, status error: IOReturn) {
+        log.info("Kanal geöffnet, Status \(error, privacy: .public)")
         guard error == kIOReturnSuccess else {
             channel = nil
             state = .failed("Kanal konnte nicht geöffnet werden (\(error))")
@@ -157,10 +181,12 @@ final class BudsManager: NSObject, ObservableObject, IOBluetoothRFCOMMChannelDel
     }
 
     func rfcommChannelClosed(_ rfcommChannel: IOBluetoothRFCOMMChannel!) {
+        log.info("Kanal geschlossen")
         channelClosed()
     }
 
     private func handle(_ message: BudsMessage) {
+        log.debug("Empfangen: ID 0x\(String(message.id, radix: 16), privacy: .public), \(message.payload.count, privacy: .public) Byte")
         if message.id == MsgID.findMyEarbudsStop.rawValue {
             isFinding = false
             return
