@@ -35,7 +35,7 @@ sed "s/__VERSION__/$VERSION/g" Resources/Info.plist > "$APP/Contents/Info.plist"
 
 echo "==> Signieren"
 if [ -n "${SIGN_IDENTITY:-}" ]; then
-    codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" "$APP"
+    codesign --force --options runtime --timestamp --entitlements Resources/BudsBar.entitlements --sign "$SIGN_IDENTITY" "$APP"
 else
     codesign --force --sign - "$APP"
 fi

@@ -11,9 +11,12 @@ Steuere deine **Samsung Galaxy Buds** direkt vom Mac aus – über ein kleines S
 - 🎧 Geräuschsteuerung: ANC · Umgebungsgeräusche · Aus
 - 🎚️ Equalizer-Presets
 - ✋ Touch-Steuerung sperren und „Berühren und halten“ belegen
-- 🔊 Ohrhörer finden (Ton abspielen)
+- 🔊 Ohrhörer finden: Ton abspielen und Signalstärke („sehr nah“ … „weiter entfernt“)
+- 🗺️ Karte „Zuletzt gesehen“: wo dein Mac war, als die Buds zuletzt verbunden waren (bleibt nur auf deinem Mac)
 - Verbindet sich automatisch, sobald die Buds mit dem Mac verbunden sind
-- Kein Internet, keine Datensammlung
+- Keine Datensammlung – Standort und Einstellungen bleiben auf deinem Mac
+
+**Voraussetzung:** macOS 14 (Sonoma) oder neuer.
 
 **Getestet mit:** Galaxy Buds3 Pro / Buds3. Andere Modelle ab Buds+ funktionieren vermutlich teilweise.
 
@@ -22,7 +25,7 @@ Steuere deine **Samsung Galaxy Buds** direkt vom Mac aus – über ein kleines S
 1. Lade die neueste `BudsBar-x.y.z.dmg` unter [Releases](../../releases) herunter.
 2. Öffne die DMG und ziehe **BudsBar** in den Ordner **Programme**.
 3. Kopple deine Buds vorher normal unter *Systemeinstellungen → Bluetooth* mit dem Mac.
-4. Starte BudsBar und erlaube den Bluetooth-Zugriff.
+4. Starte BudsBar und erlaube den Bluetooth-Zugriff (und den Standortzugriff für die Karte).
 
 ### „Apple konnte nicht überprüfen …“
 
@@ -36,7 +39,7 @@ Danach startet die App ganz normal.
 
 ## Selbst bauen
 
-Voraussetzung: macOS 13 oder neuer und die Xcode Command Line Tools (`xcode-select --install`).
+Voraussetzung: macOS 14 oder neuer und die Xcode Command Line Tools (`xcode-select --install`).
 
 ```bash
 git clone https://github.com/meherkaushal004-sudo/Galaxy-Wearable-for-MAC.git

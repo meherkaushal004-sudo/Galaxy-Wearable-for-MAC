@@ -33,8 +33,12 @@ final class BudsManager: NSObject, ObservableObject, IOBluetoothRFCOMMChannelDel
     @Published private(set) var deviceName: String?
     @Published private(set) var status = BudsStatus()
     @Published private(set) var isFinding = false
+    /// Empfangsstärke in dBm (nur solange verbunden und wenn macOS einen Wert liefert).
+    @Published private(set) var rssi: Int?
 
+    let lastSeen = LastSeenTracker()
     let log = Logger(subsystem: "io.github.budsbar.BudsBar", category: "bluetooth")
+    private var rssiTimer: Timer?
     private var attempt = 0
     private var device: IOBluetoothDevice?
     private var channel: IOBluetoothRFCOMMChannel?
@@ -153,6 +157,20 @@ final class BudsManager: NSObject, ObservableObject, IOBluetoothRFCOMMChannelDel
         isFinding = false
         status = BudsStatus()
         state = .disconnected
+        rssiTimer?.invalidate()
+        rssiTimer = nil
+        rssi = nil
+        lastSeen.budsDidDisconnect()
+    }
+
+    private func startSignalUpdates() {
+        rssiTimer?.invalidate()
+        rssiTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
+            guard let self, let device = self.device else { return }
+            let value = Int(device.rawRSSI())
+            // 127 bedeutet „unbekannt“.
+            self.rssi = (value == 127 || value == 0) ? nil : value
+        }
     }
 
     // MARK: IOBluetoothRFCOMMChannelDelegate
@@ -171,6 +189,8 @@ final class BudsManager: NSObject, ObservableObject, IOBluetoothRFCOMMChannelDel
             selector: #selector(deviceDidDisconnect(_:device:))
         )
         send(BudsCommand.managerInfo())
+        lastSeen.budsDidConnect()
+        startSignalUpdates()
     }
 
     func rfcommChannelData(_ rfcommChannel: IOBluetoothRFCOMMChannel!, data dataPointer: UnsafeMutableRawPointer!, length dataLength: Int) {
